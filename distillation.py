@@ -1,3 +1,4 @@
+#libraries
 import numpy as np
 import streamlit as st
 from matplotlib import pyplot as plt
@@ -103,16 +104,16 @@ def plotting(direction, alphas, lk, hk, xbots, xtops, nf, mtop, mbot):
             
         return (j , x) #returns number of stages and x values for plotting
 
-st.header("Multicomponent Distillation Calculator")
-state = st.session_state
+st.header("Multicomponent Distillation Calculator") #create header
+state = st.session_state #initialize session
 st.divider()
-cols = st.columns(3)
+cols = st.columns(3) #create columns to place data input options
 
-with cols[0]:
-    st.subheader('Antoine Coefficients')
-    comps = st.number_input(label='Number of Components',value=2,min_value=1, max_value=10)
+with cols[0]: #in first column
+    st.subheader('Antoine Coefficients') #input for number of components
+    comps = st.number_input(label='Number of Components',value=2,min_value=2, max_value=10)
 
-    nofc = np.linspace(1,comps,comps)
+    nofc = np.linspace(1,comps,comps) #variable for number of components
     antoine = []
     
     for i in nofc: #creates inputs for each component
@@ -124,11 +125,11 @@ with cols[0]:
         n = (A,B,C)
         antoine.append(n) #collect antoine coefficients into a list of tuples
     
-with cols[1]:
+with cols[1]: #in column 2
     st.subheader('Feed Conditions')
     zs = []
     
-    for i in nofc:
+    for i in nofc: #create slider to input the feed composition of each component as a decimal percentage
         z = st.slider(
             label='Feed Composition of Component ' + str(int(i)),
             value= 1 / comps,
@@ -137,7 +138,7 @@ with cols[1]:
             )
         zs.append(z)
     
-    if sum(zs) != 1:
+    if sum(zs) != 1: #ensures that the feed compositions sum to 1
         st.subheader('Feed Compositions do not Sum to 1')
         zs = [0] * comps
         stop = True
@@ -145,67 +146,64 @@ with cols[1]:
     else:
         stop = False
     
-    q = st.number_input(
+    q = st.number_input(  #creates input for q value
         label='Feed Quality',
-        value=1.0,
-    )
+        value=1.0)
     
-    T = st.number_input(label = 'Temperature of Feed Stream in C',value = 50.0,min_value = -273.0)
-    nf = st.number_input(label = 'Feed Location',value = 5, min_value = 0)
-    direction = st.toggle('Feed Location is Counting from Bottom')
+    T = st.number_input(label = 'Temperature of Feed Stream in C',value = 50.0,min_value = -273.0) #temperature of feed in C
+    nf = st.number_input(label = 'Feed Location',value = 5, min_value = 0) #location of the feed stream
+    direction = st.toggle('Feed Location is Counting from Bottom') #toggle for which direction it is counting from
     
-with cols[2]:
+with cols[2]: #in column 3
     st.subheader('Design Specs')
-    lk = st.slider(
+    lk = st.slider( #specifies which component is the light key
         label='Light Key Component Number',
         value=1,
         min_value=1,
-        max_value= comps,
-    )
+        max_value= comps)
     
-    lkD = st.slider(
+    lkD = st.slider( #specifies fraction of total light key leaving through distillate as a decimal percentage
         label='Fraction of Light Key Leaving in Distillate',
         value=0.90,
         min_value=0.01,
-        max_value=0.99,
-    )
+        max_value=0.99)
     
-    hk = st.slider(
+    hk = st.slider( #specifies which component is the heavy key
         label='Heavy Key Component Number',
         value=2,
         min_value=1,
-        max_value=comps,
-    )
+        max_value=comps)
     
-    if lk == hk:
+    if lk == hk: #catches if user makes a component both the hk and lk
         st.subheader('Keys must be different components')
+        stop = True
     
-    hkB = st.slider(
+    else: 
+        stop = False
+    
+    hkB = st.slider( #specifies fraction of total heavy key leaving through distillate as a decimal percentage
         label='Fraction of Heavy Key Leaving out Bottom',
         value=0.95,
         min_value=0.01,
-        max_value=0.99,
-    )
+        max_value=0.99)
     
-    R = st.number_input(label = 'Reflux Ratio',value = 5.0, min_value = 0.001)
+    R = st.number_input(label = 'Reflux Ratio',value = 5.0, min_value = 0.001) #specifies reflux ratio
     
 pp = []
 
-for i in antoine:
-    if i[-1] + T == 0:
+for i in antoine: 
+    if i[-1] + T == 0: #catches if C value in the antoine equation would give a div by 0 error
         stop = True
         st.subheader('Temperature is not valid for the Antoine Coefficients provided')
         break
     
     else:
-        p = 10 ** (i[0] - i[1] / (T + i[2]))
+        p = 10 ** (i[0] - i[1] / (T + i[2])) #calculate vapour pressure using Antoine's equation and add to list
         pp.append(p)
 
-ref = min(pp)
+ref = min(pp) #use min vapour pressure as reference
 
-j = 0
-lnk = []
-hnk = []
+j = 0 #itorator
 alpha = []
 F = 100
 Dlk = lkD * F * zs[lk - 1]
@@ -286,23 +284,24 @@ if direction:
 else:
     phase = 'Liquid'
 
-fig, ax = plt.subplots()
-ax.set_ylim([0, 1])
-ax.set_xlim([0, N])
-ax.set_aspect(N-1)
-ax.set_xlabel('Stage Number')
-ax.set_ylabel('Mole Fraction in ' + phase)
+if not stop and antoine[0] != (2.0,2.0,2.0):
+    fig, ax = plt.subplots()
+    ax.set_ylim([0, 1])
+    ax.set_xlim([0, N])
+    ax.set_aspect(N-1)
+    ax.set_xlabel('Stage Number')
+    ax.set_ylabel('Mole Fraction in ' + phase)
 
-xaxis = np.linspace(0,N-1,N)
-colours = ['tab:red','tab:blue','tab:green','tab:orange','tab:yellow','tab:gray','tab:black','tab:olive','tab:pink','tab:purple']
-v = 1
-if not stop:
+    xaxis = np.linspace(0,N-1,N)
+    colours = ['tab:red','tab:blue','tab:green','tab:orange','tab:yellow','tab:gray','tab:black','tab:olive','tab:pink','tab:purple']
+    v = 1
+    
     for i in values:
         ax.plot(xaxis, np.array(i), label = "Component " + str(v), c = colours[v-1])
         v += 1
     ax.legend()
 
-cols2 = st.columns(1)
-with cols2[0]:
-    st.pyplot(fig)
-    st.metric('Number of Stages',N - 1)
+    cols2 = st.columns(1)
+    with cols2[0]:
+        st.pyplot(fig)
+        st.metric('Number of Stages',N - 1)
